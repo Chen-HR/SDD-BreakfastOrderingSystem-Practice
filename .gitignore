@@ -6,7 +6,7 @@ venv/
 env/
 .env/
 
-.ai/rules
+.AI-Rules
 
 # lib/
 tmp/
