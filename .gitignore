@@ -1,0 +1,35 @@
+# .gitignore (https://github.com/github/gitignore/blob/main/Python.gitignore)
+
+# Environments
+venv/
+.venv/
+env/
+.env/
+
+.ai/rules
+
+# lib/
+tmp/
+
+# Distribution / packaging
+build/
+dist/
+eggs/
+.eggs/
+*.egg-info/
+*.egg
+
+# IDE
+.vscode/
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[codz]
+*$py.class
+
+# Other
+*.bak
+*.swp
+*.log
+*.tmp
+*.temp
