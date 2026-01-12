@@ -34,3 +34,30 @@ def get_admin_orders():
             'items': order_items_data
         })
     return jsonify(orders_data), 200
+
+@admin_bp.route('/orders/<uuid:order_id>/status', methods=['PUT'])
+def update_order_status(order_id):
+    data = request.get_json()
+    new_status = data.get('status')
+
+    if not new_status:
+        return jsonify({'message': 'Status is required'}), 400
+
+    order = db.session.get(Order, order_id)
+
+    if not order:
+        return jsonify({'message': 'Order not found'}), 404
+    
+    # Validate if the new_status is a valid enum value for Order.status
+    valid_statuses = [status for status in Order.status.type.enums]
+    if new_status not in valid_statuses:
+        return jsonify({'message': f'Invalid status: {new_status}. Valid statuses are: {", ".join(valid_statuses)}'}), 400
+
+    order.status = new_status
+    db.session.commit()
+
+    return jsonify({
+        'order_id': str(order.order_id),
+        'status': order.status,
+        'message': 'Order status updated successfully'
+    }), 200
