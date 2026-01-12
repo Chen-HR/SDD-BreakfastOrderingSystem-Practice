@@ -7,11 +7,26 @@ from src.services.order_service import create_order, OrderException
 import uuid
 import traceback # Import traceback
 from flask_jwt_extended import jwt_required, get_jwt_identity # Import JWT decorators and functions
+from functools import wraps # Import wraps for decorator
 
 admin_bp = Blueprint('admin', __name__, url_prefix='/api/v1/admin')
 customer_bp = Blueprint('customer', __name__, url_prefix='/api/v1')
 
+def admin_required():
+    def wrapper(fn):
+        @wraps(fn)
+        @jwt_required()
+        def decorator(*args, **kwargs):
+            current_user_id = get_jwt_identity()
+            user = db.session.get(User, uuid.UUID(current_user_id))
+            if not user or user.role != 'admin':
+                return jsonify({"msg": "Administration rights required"}), 403
+            return fn(*args, **kwargs)
+        return decorator
+    return wrapper
+
 @admin_bp.route('/orders', methods=['GET'])
+@admin_required() # Protect with admin role check
 def get_admin_orders():
     orders = db.session.query(Order).options(joinedload(Order.items).joinedload(OrderItem.menu_item)).order_by(desc(Order.created_at)).all()
     # TODO: Implement filtering
@@ -42,6 +57,7 @@ def get_admin_orders():
     return jsonify(orders_data), 200
 
 @admin_bp.route('/orders/<uuid:order_id>/status', methods=['PUT'])
+@admin_required() # Protect with admin role check
 def update_order_status(order_id):
     data = request.get_json()
     new_status = data.get('status')

@@ -3,34 +3,37 @@ from src.models import User, MenuItem, Order, OrderItem
 import uuid
 import datetime
 from decimal import Decimal # Import Decimal
+from flask_jwt_extended import create_access_token # Needed for creating test tokens if ever directly used
 
 @pytest.fixture(scope='function')
 def customer_user(db):
     """Provides a customer user for tests."""
-    customer_user_id = uuid.UUID('b0d5c0e0-0a0c-4c0d-8c0b-0d0c0a0d0c0a')
-    # Check if user already exists in the current session/transaction
-    user = db.session.get(User, customer_user_id)
-    if not user:
-        user = User(user_id=customer_user_id, email='customer@example.com', role='customer')
-        user.set_password('customer_password')
-        db.session.add(user)
-        db.session.commit() # Commit here to ensure user exists for API calls
+    user_id = uuid.uuid4()
+    email = f'customer_{user_id}@example.com' # Unique email
+    user = User(user_id=user_id, email=email, role='customer')
+    user.set_password('customer_password')
+    db.session.add(user)
+    db.session.commit() # Commit here to ensure user exists for API calls
     return user
 
 @pytest.fixture(scope='function')
-def auth_client(client, customer_user):
-    """Provides an authenticated client for tests."""
+def login_customer_user(client, customer_user):
+    """Logs in the customer user and returns their JWT token."""
     login_data = {
         'email': customer_user.email,
         'password': 'customer_password'
     }
     response = client.post('/api/v1/auth/login', json=login_data)
     assert response.status_code == 200
-    access_token = response.json['access_token']
-    client.environ_base['HTTP_AUTHORIZATION'] = f'Bearer {access_token}'
+    return response.json['access_token']
+
+@pytest.fixture(scope='function')
+def customer_auth_client(client, login_customer_user):
+    """Provides an authenticated client for tests."""
+    client.environ_base['HTTP_AUTHORIZATION'] = f'Bearer {login_customer_user}'
     return client
 
-def test_create_order_success(auth_client, db, customer_user):
+def test_create_order_success(customer_auth_client, db, customer_user):
     # Arrange
     menu_item1 = MenuItem(name="Coffee", price=Decimal('5.00'), stock_level=100)
     menu_item2 = MenuItem(name="Sandwich", price=Decimal('10.00'), stock_level=50)
@@ -43,7 +46,7 @@ def test_create_order_success(auth_client, db, customer_user):
     ]
 
     # Act
-    response = auth_client.post('/api/v1/orders', json={'items': items_payload})
+    response = customer_auth_client.post('/api/v1/orders', json={'items': items_payload})
 
     # Assert
     assert response.status_code == 201
@@ -60,7 +63,7 @@ def test_create_order_success(auth_client, db, customer_user):
     assert menu_item1.stock_level == 98
     assert menu_item2.stock_level == 49
 
-def test_create_order_insufficient_stock(auth_client, db, customer_user):
+def test_create_order_insufficient_stock(customer_auth_client, db, customer_user):
     # Arrange
     menu_item = MenuItem(name="Test Item", price=Decimal('10.00'), stock_level=5)
     db.session.add(menu_item)
@@ -71,40 +74,40 @@ def test_create_order_insufficient_stock(auth_client, db, customer_user):
     ]
 
     # Act
-    response = auth_client.post('/api/v1/orders', json={'items': items_payload})
+    response = customer_auth_client.post('/api/v1/orders', json={'items': items_payload})
 
     # Assert
     assert response.status_code == 400
     assert 'Insufficient stock' in response.json['message']
     assert menu_item.stock_level == 5 # Stock should not have changed
 
-def test_create_order_item_not_found(auth_client, db, customer_user):
+def test_create_order_item_not_found(customer_auth_client, db, customer_user):
     # Arrange
     items_payload = [
         {'item_id': str(uuid.uuid4()), 'quantity': 1}
     ]
 
     # Act
-    response = auth_client.post('/api/v1/orders', json={'items': items_payload})
+    response = customer_auth_client.post('/api/v1/orders', json={'items': items_payload})
 
     # Assert
     assert response.status_code == 400
     assert 'Menu item not found' in response.json['message']
 
-def test_create_order_empty_items(auth_client, db, customer_user):
+def test_create_order_empty_items(customer_auth_client, db, customer_user):
     # Arrange
     items_payload = []
 
     # Act
-    response = auth_client.post('/api/v1/orders', json={'items': items_payload})
+    response = customer_auth_client.post('/api/v1/orders', json={'items': items_payload})
 
     # Assert
     assert response.status_code == 400
     assert 'Items are required to create an order' in response.json['message']
 
-def test_create_order_missing_items_payload(auth_client, db, customer_user):
+def test_create_order_missing_items_payload(customer_auth_client, db, customer_user):
     # Act
-    response = auth_client.post('/api/v1/orders', json={})
+    response = customer_auth_client.post('/api/v1/orders', json={})
 
     # Assert
     assert response.status_code == 400
@@ -230,5 +233,3 @@ def test_register_user_short_password(client, db):
     # Assert
     assert response.status_code == 400
     assert response.json['msg'] == 'Password must be at least 6 characters long'
-
-
