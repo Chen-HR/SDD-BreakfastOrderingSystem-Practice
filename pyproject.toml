@@ -5,3 +5,8 @@ description = "Add your description here"
 readme = "Readme.md"
 requires-python = ">=3.11"
 dependencies = []
+
+[tool.pytest.ini_options]
+pythonpath = [
+  "src"
+]

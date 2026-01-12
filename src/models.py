@@ -1,4 +1,5 @@
 import uuid
+import bcrypt
 from sqlalchemy.dialects.postgresql import UUID
 from .app import db
 
@@ -11,6 +12,12 @@ class User(db.Model):
     role = db.Column(db.Enum('customer', 'admin', name='user_roles'), nullable=False)
     created_at = db.Column(db.DateTime, server_default=db.func.now())
     orders = db.relationship('Order', backref='user', lazy=True)
+
+    def set_password(self, password):
+        self.password_hash = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+
+    def check_password(self, password):
+        return bcrypt.checkpw(password.encode('utf-8'), self.password_hash.encode('utf-8'))
 
 class MenuItem(db.Model):
     __tablename__ = 'menu_items'
