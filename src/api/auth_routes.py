@@ -1,45 +1,76 @@
-from flask import Blueprint, request, jsonify
+from flask import request, jsonify
 from src.models import User
 from src.extensions import db
 from flask_jwt_extended import create_access_token
 from datetime import timedelta
+from flask_restx import Namespace, Resource, fields
 
-auth_bp = Blueprint('auth', __name__, url_prefix='/api/v1/auth')
+auth_ns = Namespace('auth', description='Authentication operations')
 
-@auth_bp.route('/login', methods=['POST'])
-def login():
-    email = request.json.get('email', None)
-    password = request.json.get('password', None)
+# Models for request and response
+user_auth_model = auth_ns.model('UserAuth', {
+    'email': fields.String(required=True, description='User email'),
+    'password': fields.String(required=True, description='User password', min_length=6),
+})
 
-    user = db.session.scalar(db.select(User).filter_by(email=email))
+login_success_model = auth_ns.model('LoginSuccess', {
+    'access_token': fields.String(required=True, description='JWT access token'),
+})
 
-    if user and user.check_password(password):
-        access_token = create_access_token(identity=str(user.user_id), expires_delta=timedelta(hours=1))
-        return jsonify(access_token=access_token), 200
-    else:
-        return jsonify({"msg": "Bad email or password"}), 401
+register_success_model = auth_ns.model('RegisterSuccess', {
+    'msg': fields.String(required=True, description='Success message'),
+    'user_id': fields.String(required=True, description='UUID of the registered user'),
+})
 
-@auth_bp.route('/register', methods=['POST'])
-def register():
-    email = request.json.get('email', None)
-    password = request.json.get('password', None)
+@auth_ns.route('/login')
+class UserLogin(Resource):
+    @auth_ns.doc(description='Log in a user and return a JWT access token')
+    @auth_ns.expect(user_auth_model, validate=True)
+    @auth_ns.response(200, 'Login successful', login_success_model)
+    @auth_ns.response(401, 'Bad email or password')
+    def post(self):
+        '''User Login'''
+        email = request.json.get('email')
+        password = request.json.get('password')
 
-    if not email or not password:
-        return jsonify({"msg": "Missing email or password"}), 400
+        user = db.session.scalar(db.select(User).filter_by(email=email))
 
-    if not "@" in email or "." not in email: # Basic email format validation
-        return jsonify({"msg": "Invalid email format"}), 400
+        if user and user.check_password(password):
+            access_token = create_access_token(identity=str(user.user_id), expires_delta=timedelta(hours=1))
+            return {'access_token': access_token}, 200
+        else:
+            auth_ns.abort(401, message='Bad email or password')
 
-    if len(password) < 6: # Basic password strength check
-        return jsonify({"msg": "Password must be at least 6 characters long"}), 400
+@auth_ns.route('/register')
+class UserRegister(Resource):
+    @auth_ns.doc(description='Register a new user')
+    @auth_ns.expect(user_auth_model, validate=True)
+    @auth_ns.response(201, 'User registered successfully', register_success_model)
+    @auth_ns.response(400, 'Missing email or password / Invalid email format / Password too short')
+    @auth_ns.response(409, 'User with that email already exists')
+    def post(self):
+        '''User Registration'''
+        email = request.json.get('email')
+        password = request.json.get('password')
 
-    existing_user = db.session.scalar(db.select(User).filter_by(email=email))
-    if existing_user:
-        return jsonify({"msg": "User with that email already exists"}), 409
+        if not email or not password:
+            auth_ns.abort(400, message='Missing email or password')
 
-    new_user = User(email=email, role='customer')
-    new_user.set_password(password)
-    db.session.add(new_user)
-    db.session.commit()
+        # Basic email format validation
+        if "@" not in email or "." not in email:
+            auth_ns.abort(400, message='Invalid email format')
 
-    return jsonify({"msg": "User registered successfully", "user_id": str(new_user.user_id)}), 201
+        # Basic password strength check
+        if len(password) < 6:
+            auth_ns.abort(400, message='Password must be at least 6 characters long')
+
+        existing_user = db.session.scalar(db.select(User).filter_by(email=email))
+        if existing_user:
+            auth_ns.abort(409, message='User with that email already exists')
+
+        new_user = User(email=email, role='customer')
+        new_user.set_password(password)
+        db.session.add(new_user)
+        db.session.commit()
+
+        return {'msg': 'User registered successfully', 'user_id': str(new_user.user_id)}, 201

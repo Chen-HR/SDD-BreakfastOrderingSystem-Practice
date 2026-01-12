@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:13
+    restart: always
+    environment:
+      POSTGRES_DB: breakfast_ordering_db
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: always
+    ports:
+      - "5000:5000"
+    volumes:
+      - .:/app # Mount the current directory into the container for live reloading (if enabled in Flask)
+    environment:
+      FLASK_APP: main.py
+      FLASK_ENV: development
+      SECRET_KEY: ${SECRET_KEY} # Read from host's .env if defined, or use a default
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY} # Read from host's .env if defined, or use a default
+      DATABASE_URL: postgresql://user:password@db:5432/breakfast_ordering_db
+    depends_on:
+      - db
+    # Command to run Flask, overriding the CMD in Dockerfile if needed for development
+    # For hot-reloading, usually you'd run something like `flask run --host=0.0.0.0 --debug`
+    # The Dockerfile's CMD will run `flask run --host=0.0.0.0`, so debug would need to be in FLASK_ENV=development or added here
+    command: ["flask", "run", "--host=0.0.0.0", "--debug"] # Added --debug for development
+
+volumes:
+  db_data:

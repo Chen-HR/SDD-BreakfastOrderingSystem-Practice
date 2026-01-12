@@ -233,3 +233,98 @@ def test_register_user_short_password(client, db):
     # Assert
     assert response.status_code == 400
     assert response.json['msg'] == 'Password must be at least 6 characters long'
+
+# --- Helper to create menu items and orders for tests ---
+def create_order_for_test(db, user_id, menu_item_specs, order_number_suffix="001", commit=True):
+    order_number = f"CUST-ORD-{uuid.uuid4()}-{order_number_suffix}" # Ensure unique order number
+    total_amount = Decimal('0.00')
+    order_items_list = []
+
+    for item_spec in menu_item_specs:
+        menu_item = MenuItem(name=item_spec['name'], price=item_spec['price'], stock_level=item_spec['stock_level'])
+        db.session.add(menu_item)
+        db.session.flush() # Flush to get item_id before creating order item
+
+        quantity = item_spec.get('quantity', 1)
+        subtotal = menu_item.price * quantity
+        total_amount += subtotal
+
+        order_items_list.append(OrderItem(
+            menu_item_id=menu_item.item_id,
+            quantity=quantity,
+            unit_price=menu_item.price,
+            subtotal=subtotal
+        ))
+    
+    order = Order(
+        user_id=user_id,
+        order_number=order_number,
+        total_amount=total_amount,
+        delivery_address='Test Address',
+        status='pending'
+    )
+    order.items = order_items_list
+    db.session.add(order)
+    if commit:
+        db.session.commit()
+    else:
+        db.session.flush()
+    return order, menu_item_specs
+
+# --- Tests for GET /api/v1/orders (Customer Order List) ---
+
+def test_get_customer_orders_no_token(client):
+    response = client.get('/api/v1/orders')
+    assert response.status_code == 401
+    assert "Missing Authorization Header" in response.json['msg']
+
+def test_get_customer_orders_empty(customer_auth_client):
+    response = customer_auth_client.get('/api/v1/orders')
+    assert response.status_code == 200
+    assert response.json == []
+
+def test_get_customer_orders_with_data(customer_auth_client, db, customer_user):
+    # Arrange: Create orders for the customer
+    order1, _ = create_order_for_test(db, customer_user.user_id, [{'name': "Item A", 'price': Decimal('10.00'), 'stock_level': 10, 'quantity': 1}], "ORDER1")
+    order2, _ = create_order_for_test(db, customer_user.user_id, [{'name': "Item B", 'price': Decimal('5.00'), 'stock_level': 5, 'quantity': 2}], "ORDER2")
+    
+    # Act
+    response = customer_auth_client.get('/api/v1/orders')
+    
+    # Assert
+    assert response.status_code == 200
+    data = response.json
+    assert len(data) == 2
+    
+    order_ids = [order_data['order_id'] for order_data in data]
+    assert str(order1.order_id) in order_ids
+    assert str(order2.order_id) in order_ids
+
+    # Check content of one order
+    retrieved_order1 = next(item for item in data if item["order_id"] == str(order1.order_id))
+    assert retrieved_order1['order_number'] == order1.order_number
+    assert retrieved_order1['total_amount'] == str(order1.total_amount)
+    assert len(retrieved_order1['items']) == 1
+    assert retrieved_order1['items'][0]['name'] == "Item A"
+
+def test_get_customer_orders_filters_by_user(customer_auth_client, db, customer_user):
+    # Arrange: Create an order for the authenticated customer
+    order_for_current_user, _ = create_order_for_test(db, customer_user.user_id, [{'name': "Current User Item", 'price': Decimal('10.00'), 'stock_level': 10}])
+    
+    # Create another user and an order for them (should not be visible)
+    other_user_id = uuid.uuid4()
+    other_user = User(user_id=other_user_id, email=f'other_user_{other_user_id}@example.com', role='customer')
+    other_user.set_password('otherpassword')
+    db.session.add(other_user)
+    db.session.flush()
+    order_for_other_user, _ = create_order_for_test(db, other_user.user_id, [{'name': "Other User Item", 'price': Decimal('20.00'), 'stock_level': 20}])
+    db.session.commit()
+
+    # Act
+    response = customer_auth_client.get('/api/v1/orders')
+
+    # Assert
+    assert response.status_code == 200
+    data = response.json
+    assert len(data) == 1 # Only the current user's order should be returned
+    assert data[0]['order_id'] == str(order_for_current_user.order_id)
