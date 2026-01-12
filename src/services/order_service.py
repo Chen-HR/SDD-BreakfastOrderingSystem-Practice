@@ -1,7 +1,7 @@
 import uuid
 from sqlalchemy.orm import joinedload
 from src.models import Order, OrderItem, MenuItem, User
-from src.app import db
+from src.extensions import db
 
 class OrderException(Exception):
     pass
