@@ -21,5 +21,25 @@ def login():
 
 @auth_bp.route('/register', methods=['POST'])
 def register():
-    # This is a placeholder for Task 24.
-    return jsonify({"msg": "Register not implemented yet"}), 501
+    email = request.json.get('email', None)
+    password = request.json.get('password', None)
+
+    if not email or not password:
+        return jsonify({"msg": "Missing email or password"}), 400
+
+    if not "@" in email or "." not in email: # Basic email format validation
+        return jsonify({"msg": "Invalid email format"}), 400
+
+    if len(password) < 6: # Basic password strength check
+        return jsonify({"msg": "Password must be at least 6 characters long"}), 400
+
+    existing_user = db.session.scalar(db.select(User).filter_by(email=email))
+    if existing_user:
+        return jsonify({"msg": "User with that email already exists"}), 409
+
+    new_user = User(email=email, role='customer')
+    new_user.set_password(password)
+    db.session.add(new_user)
+    db.session.commit()
+
+    return jsonify({"msg": "User registered successfully", "user_id": str(new_user.user_id)}), 201

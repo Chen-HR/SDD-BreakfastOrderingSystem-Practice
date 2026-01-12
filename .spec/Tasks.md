@@ -67,7 +67,7 @@
 
 ### 🔐 認證系統
 
-- [ ] **Task 24**: 實作 POST /api/v1/auth/register API
+- [x] **Task 24**: 實作 POST /api/v1/auth/register API
 - [x] **Task 25**: 實作 POST /api/v1/auth/login API
 - [ ] **Task 26**: 創建 JWT 認證中介軟體
 

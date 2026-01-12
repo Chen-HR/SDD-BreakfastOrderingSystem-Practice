@@ -147,4 +147,88 @@ def test_get_menu(client, db):
             assert item['stock_level'] == 5
             assert item['image_url'] == "http://example.com/pastry.jpg"
 
+def test_register_user_success(client, db):
+    # Arrange
+    register_data = {
+        'email': 'newuser@example.com',
+        'password': 'strongpassword'
+    }
+
+    # Act
+    response = client.post('/api/v1/auth/register', json=register_data)
+
+    # Assert
+    assert response.status_code == 201
+    assert response.json['msg'] == 'User registered successfully'
+    assert 'user_id' in response.json
+
+    user = db.session.scalar(db.select(User).filter_by(email='newuser@example.com'))
+    assert user is not None
+    assert user.check_password('strongpassword')
+    assert user.role == 'customer'
+
+def test_register_user_existing_email(client, db, customer_user):
+    # Arrange (customer_user fixture already creates a user)
+    register_data = {
+        'email': customer_user.email, # Use existing email
+        'password': 'anotherpassword'
+    }
+
+    # Act
+    response = client.post('/api/v1/auth/register', json=register_data)
+
+    # Assert
+    assert response.status_code == 409
+    assert response.json['msg'] == 'User with that email already exists'
+
+def test_register_user_missing_fields(client, db):
+    # Arrange - missing password
+    register_data_missing_password = {
+        'email': 'missingpass@example.com'
+    }
+    # Arrange - missing email
+    register_data_missing_email = {
+        'password': 'somepassword'
+    }
+
+    # Act 1 - missing password
+    response_missing_password = client.post('/api/v1/auth/register', json=register_data_missing_password)
+    # Assert 1
+    assert response_missing_password.status_code == 400
+    assert response_missing_password.json['msg'] == 'Missing email or password'
+
+    # Act 2 - missing email
+    response_missing_email = client.post('/api/v1/auth/register', json=register_data_missing_email)
+    # Assert 2
+    assert response_missing_email.status_code == 400
+    assert response_missing_email.json['msg'] == 'Missing email or password'
+
+def test_register_user_invalid_email(client, db):
+    # Arrange
+    register_data = {
+        'email': 'invalid-email',
+        'password': 'somepassword'
+    }
+
+    # Act
+    response = client.post('/api/v1/auth/register', json=register_data)
+
+    # Assert
+    assert response.status_code == 400
+    assert response.json['msg'] == 'Invalid email format'
+
+def test_register_user_short_password(client, db):
+    # Arrange
+    register_data = {
+        'email': 'shortpass@example.com',
+        'password': 'short' # less than 6 characters
+    }
+
+    # Act
+    response = client.post('/api/v1/auth/register', json=register_data)
+
+    # Assert
+    assert response.status_code == 400
+    assert response.json['msg'] == 'Password must be at least 6 characters long'
+
 
