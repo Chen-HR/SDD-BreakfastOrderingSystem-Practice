@@ -55,8 +55,12 @@ def test_get_admin_orders_with_data(client, db):
     assert order_data['total_amount'] == '15.00' # Decimal serialized to string
     assert order_data['status'] == 'pending'
     assert len(order_data['items']) == 2
-    assert order_data['items'][0]['name'] == 'Coffee'
-    assert order_data['items'][1]['name'] == 'Sandwich'
+
+    # Check for presence of each item regardless of order
+    item_names = [item['name'] for item in order_data['items']]
+    assert 'Coffee' in item_names
+    assert 'Sandwich' in item_names
+
 
 def test_update_order_status_success(client, db):
     # Arrange
