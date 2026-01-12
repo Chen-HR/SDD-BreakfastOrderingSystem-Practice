@@ -36,10 +36,16 @@ class Order(db.Model):
     user_id = db.Column(UUID(as_uuid=True), db.ForeignKey('users.user_id'), nullable=False)
     order_number = db.Column(db.String, nullable=False, unique=True)
     total_amount = db.Column(db.Numeric(10, 2), nullable=False)
-    status = db.Column(db.Enum('pending', 'in_progress', 'ready_for_delivery', 'delivered', 'cancelled', name='order_statuses'), nullable=False, default='pending')
+    status = db.Column(db.Enum('pending', 'in_progress', 'ready_for_delivery', 'delivered', 'cancelled', name='order_statuses'), nullable=False)
     delivery_address = db.Column(db.Text)
     created_at = db.Column(db.DateTime, server_default=db.func.now())
     items = db.relationship('OrderItem', backref='order', lazy=True)
+
+    def __init__(self, **kwargs):
+        super(Order, self).__init__(**kwargs)
+        if self.status is None:
+            self.status = 'pending'
+
 
 
 class OrderItem(db.Model):
