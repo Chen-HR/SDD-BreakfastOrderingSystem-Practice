@@ -97,3 +97,17 @@ def create_customer_order():
         db.session.rollback()
         traceback.print_exc() # Print the full traceback
         return jsonify({'message': 'An unexpected error occurred'}), 500
+
+@customer_bp.route('/menu', methods=['GET'])
+def get_menu():
+    menu_items = db.session.execute(db.select(MenuItem).filter(MenuItem.stock_level > 0)).scalars().all()
+    menu_data = []
+    for item in menu_items:
+        menu_data.append({
+            'item_id': str(item.item_id),
+            'name': item.name,
+            'price': str(item.price), # Convert Decimal to string for JSON serialization
+            'stock_level': item.stock_level,
+            'image_url': item.image_url
+        })
+    return jsonify(menu_data), 200

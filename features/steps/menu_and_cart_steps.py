@@ -132,7 +132,9 @@ def step_impl(context, item_name, quantity):
         context.user_carts[user_key].append({'item_id': item_id, 'quantity': quantity})
         context.add_to_cart_error = None # No error
 
-
+@then('購物車應顯示錯誤訊息 "{error_message}"')
+def step_impl(context, error_message):
+    assert context.add_to_cart_error == error_message, f"Expected error '{error_message}', but got '{context.add_to_cart_error}'"
 
 @then('購物車的總金額應保持為 {total_amount:d} 元')
 def step_impl(context, total_amount):
