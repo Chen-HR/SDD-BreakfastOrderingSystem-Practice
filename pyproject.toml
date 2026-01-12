@@ -4,7 +4,10 @@ version = "0.1.0"
 description = "Add your description here"
 readme = "Readme.md"
 requires-python = ">=3.11"
-dependencies = []
+dependencies = [
+    "Flask-JWT-Extended",
+    "PyJWT",
+]
 
 [tool.pytest.ini_options]
 pythonpath = [

@@ -1,5 +1,4 @@
 import uuid
-from sqlalchemy.orm import joinedload
 from src.models import Order, OrderItem, MenuItem, User
 from src.extensions import db
 
@@ -17,46 +16,53 @@ def create_order(user_id, items):
     if not items:
         raise OrderException("Cannot create an order with no items.")
 
-    # Use a transaction
-    with db.session.begin_nested() as transaction:
-        total_amount = 0
-        new_order = Order(
-            user_id=user_id,
-            order_number=f"ORD-{uuid.uuid4()}" # A more robust number generation would be needed in production
-        )
+    total_amount = 0
+    new_order = Order(
+        user_id=user_id,
+        order_number=f"ORD-{uuid.uuid4()}" # A more robust number generation would be needed in production
+    )
 
-        order_items = []
-        for item_data in items:
-            item_id = item_data.get('item_id')
-            quantity = item_data.get('quantity')
+    order_items = []
+    for item_data in items:
+        item_id = item_data.get('item_id')
+        quantity = item_data.get('quantity')
 
-            if not all([item_id, quantity]):
-                raise OrderException("Invalid item data provided.")
+        if not all([item_id, quantity]):
+            raise OrderException("Invalid item data provided.")
+        
+        item_uuid = None
+        if isinstance(item_id, str):
+            try:
+                item_uuid = uuid.UUID(item_id)
+            except ValueError:
+                raise OrderException(f"Invalid item ID format: {item_id}")
+        elif isinstance(item_id, uuid.UUID):
+            item_uuid = item_id
+        else:
+            raise OrderException(f"Invalid item ID type: {type(item_id)}")
 
-            # Lock the row for update
-            menu_item = db.session.get(MenuItem, item_id, with_for_update=True)
+        # Lock the row for update
+        menu_item = db.session.get(MenuItem, item_uuid, with_for_update=True)
+        if not menu_item:
+            raise OrderException(f"Menu item not found: {item_id}")
 
-            if not menu_item:
-                raise OrderException(f"Menu item not found: {item_id}")
+        if menu_item.stock_level < quantity:
+            raise OrderException(f"Insufficient stock for {menu_item.name}. Available: {menu_item.stock_level}, Requested: {quantity}")
 
-            if menu_item.stock_level < quantity:
-                raise OrderException(f"Insufficient stock for {menu_item.name}. Available: {menu_item.stock_level}, Requested: {quantity}")
+        subtotal = menu_item.price * quantity
+        total_amount += subtotal
+        menu_item.stock_level -= quantity
 
-            subtotal = menu_item.price * quantity
-            total_amount += subtotal
-            menu_item.stock_level -= quantity
+        order_items.append(OrderItem(
+            menu_item_id=menu_item.item_id,
+            quantity=quantity,
+            unit_price=menu_item.price,
+            subtotal=subtotal
+        ))
 
-            order_items.append(OrderItem(
-                menu_item_id=menu_item.item_id,
-                quantity=quantity,
-                unit_price=menu_item.price,
-                subtotal=subtotal
-            ))
+    new_order.total_amount = total_amount
+    new_order.items = order_items
 
-        new_order.total_amount = total_amount
-        new_order.items = order_items
-
-        db.session.add(new_order)
+    db.session.add(new_order)
     
-    # The transaction is committed here if no exception was raised
     return new_order
