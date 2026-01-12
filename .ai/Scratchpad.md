@@ -1,0 +1,2 @@
+- Remember to use the SQLAlchemy 2.0 syntax (`db.session.get()`) instead of the legacy `query.get()` to avoid warnings.
+- For locking, use `db.session.get(Model, id, with_for_update=True)`.
