@@ -38,10 +38,10 @@
 
 ### 🛒 API 實作 - 客戶訂單創建
 
-- [ ] **Task 12**: 實作訂單創建業務邏輯 (OrderService)
-- [ ] **Task 13**: 實作 POST /api/v1/orders API
-- [ ] **Task 14**: 撰寫 Create Order API 整合測試
-- [ ] **Task 15**: 撰寫 BDD 驗收測試 - 訂單創建流程 (Gherkin)
+- [x] **Task 12**: 實作訂單創建業務邏輯 (OrderService)
+- [x] **Task 13**: 實作 POST /api/v1/orders API
+- [x] **Task 14**: 撰寫 Create Order API 整合測試
+- [x] **Task 15**: 撰寫 BDD 驗收測試 - 訂單創建流程 (Gherkin)
 
 ---
 
