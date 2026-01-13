@@ -31,10 +31,10 @@
 
 ### 🔌 API 實作 - 管理員訂單管理
 
-- [ ] **Task 8**: 實作 GET /api/v1/admin/orders API (列表與篩選)
-- [ ] **Task 9**: 撰寫 Admin Orders API 整合測試
-- [ ] **Task 10**: 實作 PUT /api/v1/orders/:id/status API (狀態更新)
-- [ ] **Task 11**: 撰寫 Status Update API 整合測試
+- [x] **Task 8**: 實作 GET /api/v1/admin/orders API (列表與篩選)
+- [x] **Task 9**: 撰寫 Admin Orders API 整合測試
+- [x] **Task 10**: 實作 PUT /api/v1/orders/:id/status API (狀態更新)
+- [x] **Task 11**: 撰寫 Status Update API 整合測試
 
 ### 🛒 API 實作 - 客戶訂單創建
 
