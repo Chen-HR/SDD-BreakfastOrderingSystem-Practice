@@ -32,3 +32,18 @@ class OrderCreationResource(Resource):
             # Catch any other unexpected errors
             db.session.rollback() # Rollback in case of unexpected errors
             return {'message': f'An unexpected error occurred: {str(e)}'}, 500
+
+class MenuResource(Resource):
+    def get(self):
+        menu_items = MenuItem.query.all()
+        result = []
+        for item in menu_items:
+            result.append({
+                'id': item.id,
+                'name': item.name,
+                'description': item.description,
+                'price': item.price,
+                'stock': item.stock,
+                'image_url': item.image_url
+            })
+        return {'menu': result}, 200

@@ -148,3 +148,30 @@ def test_create_order_missing_items_data(client, seed_customer_api_data):
     assert response.status_code == 400
     data = response.get_json()
     assert 'Items data (list of item_id and quantity) is required' in data['message']
+
+# --- Menu API Tests (Task 17) ---
+
+def test_get_menu_success(client, seed_customer_api_data):
+    # Ensure there are some menu items in the database from seed_customer_api_data
+    # No need to seed again, it's already done by the fixture
+    response = client.get('/api/v1/menu')
+    assert response.status_code == 200
+    data = response.get_json()
+    assert 'menu' in data
+    assert isinstance(data['menu'], list)
+    assert len(data['menu']) == 3 # Burger, Fries, Drink
+
+    # Check structure of a menu item
+    menu_item = next((item for item in data['menu'] if item['name'] == 'Burger'), None)
+    assert menu_item is not None
+    assert 'id' in menu_item
+    assert menu_item['name'] == 'Burger'
+    assert menu_item['description'] == 'Classic Burger'
+    assert menu_item['price'] == 8.00
+    assert menu_item['stock'] == 5
+    assert 'image_url' in menu_item
+
+    # Check an out-of-stock item
+    drink_item = next((item for item in data['menu'] if item['name'] == 'Drink'), None)
+    assert drink_item is not None
+    assert drink_item['stock'] == 0
