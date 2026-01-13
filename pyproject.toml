@@ -12,4 +12,8 @@ dependencies = [
     "flask-restful>=0.3.10",
     "flask-sqlalchemy>=3.1.1",
     "pytest>=9.0.2",
+    "flask-jwt-extended>=4.0.0",
+    "flask-marshmallow>=1.3.0",
+    "marshmallow-sqlalchemy>=1.4.2",
+    "flask-cors>=4.0.0",
 ]

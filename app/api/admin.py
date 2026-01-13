@@ -1,11 +1,21 @@
 from flask import request
 from flask_restful import Resource
-from app import db
+from app import db, ma
 from app.models import Order, User # Assuming User model is needed for filtering by user
-from datetime import datetime
+from datetime import datetime, timedelta
+from flask_jwt_extended import jwt_required, get_jwt_identity
+from app.schemas import OrderSchema
+from marshmallow import Schema, fields, validate, ValidationError
+
+class OrderStatusUpdateSchema(Schema):
+    status = fields.String(required=True, validate=validate.OneOf(['pending', 'processing', 'completed', 'cancelled']))
 
 class AdminOrdersResource(Resource):
+    @jwt_required()
     def get(self):
+        # TODO: Implement role-based access control here (e.g., check if get_jwt_identity() is an admin)
+        current_user_id = get_jwt_identity() # Can be used for admin checks
+
         query = Order.query
 
         # Filtering
@@ -31,44 +41,28 @@ class AdminOrdersResource(Resource):
         
         orders = query.order_by(Order.created_at.desc()).paginate(page=page, per_page=per_page, error_out=False)
 
-        # Serialize orders
-        # For simplicity, we'll return a basic dictionary. In a real app, use Marshmallow or similar.
-        result = []
-        for order in orders.items:
-            order_items_data = []
-            for item in order.items:
-                order_items_data.append({
-                    'item_id': item.menu_item_id,
-                    'quantity': item.quantity,
-                    'price_at_order': item.price,
-                    'item_name': item.menu_item.name # Assuming menu_item relationship is loaded
-                })
-
-            result.append({
-                'id': order.id,
-                'user_id': order.user_id,
-                'status': order.status,
-                'created_at': order.created_at.isoformat(),
-                'updated_at': order.updated_at.isoformat(),
-                'items': order_items_data
-            })
+        order_schema = OrderSchema(many=True) # Use many=True for a list of orders
         
         return {
-            'orders': result,
+            'orders': order_schema.dump(orders.items),
             'total_pages': orders.pages,
             'current_page': orders.page,
             'total_items': orders.total
         }, 200
 
-from datetime import timedelta # Import timedelta for end_date filtering
 
 class OrderStatusResource(Resource):
+    @jwt_required()
     def put(self, order_id):
-        data = request.get_json()
-        new_status = data.get('status')
+        # TODO: Implement role-based access control here (e.g., check if get_jwt_identity() is an admin)
+        current_user_id = get_jwt_identity() # Can be used for admin checks
 
-        if not new_status:
-            return {'message': 'Status is required'}, 400
+        try:
+            data = OrderStatusUpdateSchema().load(request.get_json())
+        except ValidationError as err:
+            return {"message": err.messages}, 400
+
+        new_status = data['status']
         
         order = db.session.get(Order, order_id)
         if not order:

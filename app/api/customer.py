@@ -1,32 +1,45 @@
 from flask import request
 from flask_restful import Resource
 from app.services import OrderService
-from app import db
+from app import db, ma
 from app.models import User, MenuItem
+from flask_jwt_extended import jwt_required, get_jwt_identity
+from app.schemas import MenuItemSchema, OrderSchema
+from marshmallow import Schema, fields, validate, ValidationError
+
+class OrderItemRequestSchema(Schema):
+    item_id = fields.Integer(required=True)
+    quantity = fields.Integer(required=True, validate=validate.Range(min=1))
+
+class OrderCreationRequestSchema(Schema):
+    items = fields.List(fields.Nested(OrderItemRequestSchema), required=True, validate=validate.Length(min=1))
 
 class OrderCreationResource(Resource):
+    @jwt_required()
     def post(self):
-        data = request.get_json()
-        user_id = data.get('user_id')
-        items_data = data.get('items')
+        current_user_id = get_jwt_identity()
+        try:
+            data = OrderCreationRequestSchema().load(request.get_json())
+        except ValidationError as err:
+            return {"message": err.messages}, 400
 
-        if not user_id:
-            return {'message': 'User ID is required'}, 400
-        if not items_data or not isinstance(items_data, list):
-            return {'message': 'Items data (list of item_id and quantity) is required'}, 400
+        items_data = data['items']
         
-        user = db.session.get(User, user_id)
+        user = db.session.get(User, current_user_id)
         if not user:
-            return {'message': f'User with ID {user_id} not found'}, 404
+            # This case should ideally not be reached if JWT is valid and user exists
+            return {'message': f'User with ID {current_user_id} not found'}, 404
 
         try:
-            order, total_amount = OrderService.create_order(user_id, items_data)
+            order, total_amount = OrderService.create_order(current_user_id, items_data)
+            order_schema = OrderSchema()
             return {
                 'message': 'Order created successfully',
-                'order_id': order.id,
+                'order': order_schema.dump(order),
                 'total_amount': total_amount
             }, 201
         except ValueError as e:
+            db.session.rollback() # Rollback in case of business logic errors
             return {'message': str(e)}, 400
         except Exception as e:
             # Catch any other unexpected errors
@@ -34,16 +47,8 @@ class OrderCreationResource(Resource):
             return {'message': f'An unexpected error occurred: {str(e)}'}, 500
 
 class MenuResource(Resource):
+    @jwt_required()
     def get(self):
         menu_items = MenuItem.query.all()
-        result = []
-        for item in menu_items:
-            result.append({
-                'id': item.id,
-                'name': item.name,
-                'description': item.description,
-                'price': item.price,
-                'stock': item.stock,
-                'image_url': item.image_url
-            })
-        return {'menu': result}, 200
+        menu_schema = MenuItemSchema(many=True) # Use many=True for a list of items
+        return {'menu': menu_schema.dump(menu_items)}, 200
