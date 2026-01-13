@@ -3,8 +3,8 @@
 ## 文件資訊
 
 - **版本**: 1.0
-- **依據規格**: spec.md v1.0
-- **依據憲法**: constitution.md v1.0
+- **依據規格**: Spec.md v1.0
+- **依據規範**: Regulations.md v1.0
 
 ---
 
@@ -38,7 +38,7 @@
 #### Table: `users`
 
 | 欄位名稱 | 資料類型 | 說明 |
-|- ------- -|- ------- -|- ---- -|
+| --------- | --------- | ------ |
 | `user_id` | UUID (PK) | 主鍵 |
 | `email` | VARCHAR | 唯一，登入帳號 |
 | `password_hash` | VARCHAR | bcrypt 雜湊 |
@@ -48,7 +48,7 @@
 #### Table: `menu_items`
 
 | 欄位名稱 | 資料類型 | 說明 |
-|- ------- -|- ------- -|- ---- -|
+| --------- | --------- | ------ |
 | `item_id` | UUID (PK) | 主鍵 |
 | `name` | VARCHAR | 餐點名稱 |
 | `price` | DECIMAL | 價格 |
@@ -59,7 +59,7 @@
 #### Table: `orders`
 
 | 欄位名稱 | 資料類型 | 說明 |
-|- ------- -|- ------- -|- ---- -|
+| --------- | --------- | ------ |
 | `order_id` | UUID (PK) | 主鍵 |
 | `user_id` | UUID (FK) | 關聯用戶 |
 | `order_number` | VARCHAR | ORD-YYYYMMDD-XXX |
@@ -70,7 +70,7 @@
 #### Table: `order_items`
 
 | 欄位名稱 | 資料類型 | 說明 |
-|- ------- -|- ------- -|- ---- -|
+| --------- | --------- | ------ |
 | `item_id` | UUID (PK) | 主鍵 |
 | `order_id` | UUID (FK) | 關聯訂單 |
 | `menu_item_id` | UUID (FK) | 關聯菜單 |
