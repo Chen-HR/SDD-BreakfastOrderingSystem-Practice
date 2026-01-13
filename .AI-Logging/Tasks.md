@@ -18,10 +18,10 @@
 
 ### 🗄️ 資料庫建構
 
-- [ ] **Task 1**: 創建資料庫模型 - User (包含密碼雜湊)
-- [ ] **Task 2**: 創建資料庫模型 - MenuItem (包含庫存與圖片驗證)
-- [ ] **Task 3**: 創建資料庫模型 - Order 與 OrderItem (包含狀態機驗證)
-- [ ] **Task 4**: 創建資料庫遷移腳本 (Flask-Migrate)
+- [x] **Task 1**: 創建資料庫模型 - User (包含密碼雜湊)
+- [x] **Task 2**: 創建資料庫模型 - MenuItem (包含庫存與圖片驗證)
+- [x] **Task 3**: 創建資料庫模型 - Order 與 OrderItem (包含狀態機驗證)
+- [x] **Task 4**: 創建資料庫遷移腳本 (Flask-Migrate)
 
 ### 🧪 測試驅動開發 (TDD)
 

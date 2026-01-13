@@ -11,6 +11,9 @@ def create_app():
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///breakfast.db'
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     
+    
+    from app import models  # Import models here to register them with SQLAlchemy and Flask-Migrate
+    
     db.init_app(app)
     migrate.init_app(app, db)
     
